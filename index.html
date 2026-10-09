@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MonkeyBHC // Premium Exam Typist Platform</title>
+    <style>
+        :root {
+            --bg-color: #323437;
+            --main-color: #e2b714;
+            --caret-color: #e2b714;
+            --sub-color: #646669;
+            --text-color: #d1d0c5;
+            --error-color: #ca4754;
+            --correct-color: #d1d0c5;
+            --panel-bg: #2c2e31;
+        }
+
+        body {
+            font-family: 'Lexend Deca', 'Segoe UI', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .container {
+            max-width: 1050px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--main-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo span {
+            color: var(--text-color);
+            font-size: 1.2rem;
+            font-weight: 300;
+        }
+
+        .menu-bar {
+            display: flex;
+            gap: 15px;
+            background: var(--panel-bg);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .config-btn {
+            background: transparent;
+            border: none;
+            color: var(--sub-color);
+            cursor: pointer;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 4px;
+            transition: color 0.2s, background 0.2s;
+        }
+
+        .config-btn:hover, .config-btn.active {
+            color: var(--main-color);
+        }
+
+        .config-btn.active {
+            background: rgba(226, 183, 20, 0.1);
+        }
+
+        .stats-banner {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 25px;
+            font-size: 1.8rem;
+            font-weight: 300;
+            color: var(--sub-color);
+            height: 40px;
+            align-items: center;
+        }
+
+        .stat-item span {
+            color: var(--main-color);
+            font-weight: 700;
+        }
+
+        .typing-box-wrapper {
+            position: relative;
+            background: transparent;
+            padding: 10px 0;
+            margin-bottom: 30px;
+            outline: none;
+        }
+
+        .words-container {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1.55rem;
+            line-height: 2.4rem;
+            color: var(--sub-color);
+            word-wrap: break-word;
+            user-select: none;
+            position: relative;
+            height: 120px;
+            overflow: hidden;
+        }
+
+        .word {
+            display: inline-block;
+            margin-right: 12px;
+            margin-bottom: 4px;
+            position: relative;
+        }
+
+        .letter {
+            position: relative;
+        }
+
+        .letter.correct {
+            color: var(--correct-color);
+        }
+
+        .letter.incorrect {
+            color: var(--error-color);
+            border-bottom: 2px solid var(--error-color);
+        }
+
+        .caret {
+            position: absolute;
+            width: 2px;
+            height: 1.8rem;
+            background-color: var(--caret-color);
+            top: 4px;
+            left: 0;
+            transition: all 0.1s ease-out;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
+        .hidden-input {
+            position: absolute;
+            opacity: 0;
+            z-index: -1;
+        }
+
+        .focus-error-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(50, 52, 55, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--text-color);
+            font-size: 1.2rem;
+            cursor: pointer;
+            border-radius: 8px;
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        .focus-error-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .footer-tips {
+            text-align: center;
+            color: var(--sub-color);
+            font-size: 0.85rem;
+            margin-top: 40px;
+            line-height: 1.4rem;
+        }
+
+        .mode-badge {
+            background: var(--error-color);
+            color: white;
+            font-size: 0.75rem;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            margin-left: 8px;
+            display: none;
+        }
+
+        .mode-badge.active {
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="logo">
+            monkeyBHC <span>mini system</span>
+        </div>
+        <div class="menu-bar">
+            <button class="config-btn active" id="btn-bhc" onclick="switchPool('bhc')">BHC Legal Passages</button>
+            <button class="config-btn" id="btn-numbers" onclick="switchPool('numbers')">Mix Numbers & Symbols</button>
+            <button class="config-btn" id="btn-lock" onclick="toggleExamLock()" style="border-left: 1px solid #444; padding-left: 15px;">
+                Exam Lock: <span id="lock-status" style="color: var(--sub-color);">OFF</span>
+            </button>
+        </div>
+    </header>
+
+    <div class="stats-banner">
+        <div class="stat-item" id="wpm-display">wpm: <span>0</span></div>
+        <div class="stat-item" id="acc-display">acc: <span>100%</span></div>
+        <div class="stat-item" id="timer-display">time: <span>60s</span></div>
+        <div class="mode-badge" id="exam-badge">BHC Exam Rules Active</div>
+    </div>
+
+    <div class="typing-box-wrapper" onclick="focusInput()">
+        <div class="focus-error-overlay" id="focus-overlay">Click here to focus and begin typing</div>
+        <div class="caret" id="custom-caret"></div>
+        <div class="words-container" id="text-display-box"></div>
+    </div>
+
+    <input type="text" id="master-input" class="hidden-input" autocomplete="off" autocapitalize="off" spellcheck="false">
+
+    <footer class="footer-tips">
+        <span style="color: var(--main-color);">Tab + Enter</span> to quickly restart the session. <br>
+        BHC Exam Lock forces a strict stop on errors—you cannot pass a word until all previous letters are fixed perfectly.
+    </footer>
+</div>
+
+<script>
+    const dataPools = {
+        bhc: [
+            "In the High Court of Judicature at Bombay, Criminal Appellate Jurisdiction, Writ Petition No. 4810 of 2024. Under Section 482 of the Code of Criminal Procedure, 1973, the petitioner prays for quashing of FIR No. 231 of 2023 registered under Sections 406, 420 read with Section 34 of the Indian Penal Code.",
+            "According to the provisions of Article 226 of the Constitution of India, the Division Bench issued a speaking order dated 14.10.2025. The Respondent is directed to deposit an ad-interim penalty sum of Rs. 1,50,000/- inside the registry workspace within a strict duration of 4 weeks.",
+            "The civil suit execution proceedings bearing Civil Appeal No. 7829 of 2019 were delayed under Clause 4 of Section 12. The lower court order passed on 23-08-2018 stands modified by this Court. List the Chamber Matter on 11.12.2026 for final arguments.",
+            "Perused the continuous evaluation reports and statement of objects under Section 14(A) of the Arbitration Act. The execution application filed by the Appellant was registered as Special Case No. 89 of 2022. Final judgment is reserved."
+        ],
+        numbers: [
+            "f1f j7j f2f j8j f3f j9j f4f j0j 1234 7890 (45) [89] {102} @user_987 balance: $4,500/- rate: +15.5%",
+            "Section 45, Clause (2)(b); No. 789/2024; Page: 112-115; Dated: 09/10/2026; Act No. 12 of 1882; Vol. 56;",
+            "102 938 475 564 738 291 049 586 721 394 857 10 &*() _++= - -!!~ #420, Rs. 25,350/- [Ref: Clause 9]",
+            "Writ Petition 415/2024 [Art. 226] contains 1,250 lines, 4,500 characters, 32 sections, and 10 annexures."
+        ]
+    };
+
+    let activePool = "bhc";
+    let textStr = "";
+    let examLockMode = false;
+    
+    let timerStart = null;
+    let timerInterval = null;
+    let testDuration = 60; 
+    let testActive = false;
+
+    let lettersArray = [];
+    let currentIdx = 0;
+    let totalKeystrokes = 0;
+    let uncorrectedErrors = 0;
+
+    const textDisplayBox = document.getElementById("text-display-box");
+    const masterInput = document.getElementById("master-input");
+    const customCaret = document.getElementById("custom-caret");
+    const focusOverlay = document.getElementById("focus-overlay");
+
+    function initTest() {
+        clearInterval(timerInterval);
+        testActive = false;
+        timerStart = null;
+        currentIdx = 0;
+        totalKeystrokes = 0;
+        uncorrectedErrors = 0;
+        masterInput.value = "";
+        
+        document.getElementById("timer-display").querySelector("span").textContent = `${testDuration}s`;
+        document.getElementById("wpm-display").querySelector("span").textContent = "0";
+        document.getElementById("acc-display").querySelector("span").textContent = "100%";
+
+        const sentences = dataPools[activePool];
+        textStr = sentences[Math.floor(Math.random() * sentences.length)];
+        
+        buildDOMText();
+        updateCaretPosition();
+    }
+
+    function buildDOMText() {
+        textDisplayBox.innerHTML = "";
+        lettersArray = [];
+        
+        const words = textStr.split(" ");
+        words.forEach((wordText, wIdx) => {
+            const wordSpan = document.createElement("div");
+            wordSpan.className = "word";
+            
+            [...wordText].forEach(char => {
+                const letterSpan = document.createElement("span");
+                letterSpan.className = "letter";
+                letterSpan.textContent = char;
+                wordSpan.appendChild(letterSpan);
+                lettersArray.push(letterSpan);
+            });
+
+            // Append space character logic except after the last word
+            if (wIdx < words.length - 1) {
+                const spaceSpan = document.createElement("span");
+                spaceSpan.className = "letter";
+                spaceSpan.textContent = " ";
+                wordSpan.appendChild(spaceSpan);
+                lettersArray.push(spaceSpan);
+            }
+            
+            textDisplayBox.appendChild(wordSpan);
+        });
+    }
+
+    function focusInput() {
+        masterInput.focus();
+        focusOverlay.classList.remove("active");
+    }
+
+    masterInput.addEventListener("blur", () => {
+        focusOverlay.classList.add("active");
+    });
+
+    function toggleExamLock() {
+        examLockMode = !examLockMode;
+        const btn = document.getElementById("btn-lock");
+        const status = document.getElementById("lock-status");
+        const badge = document.getElementById("exam-badge");
+        
+        if (examLockMode) {
+            status.textContent = "ON";
+            status.style.color = "var(--error-color)";
+            badge.classList.add("active");
+        } else {
+            status.textContent = "OFF";
+            status.style.color = "var(--sub-color)";
+            badge.classList.remove("active");
+        }
+        initTest();
+    }
+
+    function switchPool(poolType) {
+        activePool = poolType;
+        document.getElementById("btn-bhc").classList.toggle("active", poolType === 'bhc');
+        document.getElementById("btn-numbers").classList.toggle("active", poolType === 'numbers');
+        initTest();
+    }
+
+    function updateCaretPosition() {
+        if (currentIdx < lettersArray.length) {
+            const currentLetter = lettersArray[currentIdx];
+            customCaret.style.left = `${currentLetter.offsetLeft}px`;
+            customCaret.style.top = `${currentLetter.offsetTop + 4}px`;
+        } else if (lettersArray.length > 0) {
+            const lastLetter = lettersArray[lettersArray.length - 1];
+            customCaret.style.left = `${lastLetter.offsetLeft + lastLetter.offsetWidth}px`;
+            customCaret.style.top = `${lastLetter.offsetTop + 4}px`;
+        }
+    }
+
+    masterInput.addEventListener("input", (e) => {
+        const val = e.target.value;
+        
+        if (!testActive && val.length > 0) {
+            startTimer();
+        }
+
+        // Handle Backspaces
+        if (val.length < currentIdx) {
+            // Revert state metrics
+            while (currentIdx > val.length) {
+                currentIdx--;
+                lettersArray[currentIdx].className = "letter";
+            }
+            updateCaretPosition();
+            calculateRealtimeStats();
+            return;
+        }
+
+        // Handle regular character entry
+        const newlyTypedChar = val[val.length - 1];
+        const targetChar = textStr[currentIdx];
+
+        // Enforce high court exam block check
+        if (examLockMode && currentIdx > 0) {
+            const previousLetter = lettersArray[currentIdx - 1];
+            if (previousLetter.classList.contains("incorrect")) {
+                // Wipe the typed invalid char out from input system
+                masterInput.value = val.slice(0, currentIdx);
+                return;
+            }
+        }
+
+        totalKeystrokes++;
+
+        if (newlyTypedChar === targetChar) {
+            lettersArray[currentIdx].className = "letter correct";
+        } else {
+            lettersArray[currentIdx].className = "letter incorrect";
+        }
+
+        currentIdx++;
+        updateCaretPosition();
+        calculateRealtimeStats();
+
+        if (currentIdx >= textStr.length) {
+            endTest(true);
+        }
+    });
+
+    function startTimer() {
+        testActive = true;
+        timerStart = new Date();
+        let timeLeft = testDuration;
+        
+        timerInterval = setInterval(() => {
+            const secondsPassed = Math.floor((new Date() - timerStart) / 1000);
+            timeLeft = testDuration - secondsPassed;
+            
+            if (timeLeft <= 0) {
+                document.getElementById("timer-display").querySelector("span").textContent = "0s";
+                endTest(false);
+            } else {
+                document.getElementById("timer-display").querySelector("span").textContent = `${timeLeft}s`;
+                calculateRealtimeStats();
+            }
+        }, 1000);
+    }
+
+    function calculateRealtimeStats() {
+        if (!timerStart) return;
+        const minutesElapsed = (new Date() - timerStart) / 60000;
+        if (minutesElapsed <= 0) return;
+
+        let totalErrors = 0;
+        let correctChars = 0;
+
+        for (let i = 0; i < currentIdx; i++) {
+            if (lettersArray[i].classList.contains("incorrect")) totalErrors++;
+            if (lettersArray[i].classList.contains("correct")) correctChars++;
+        }
+
+        // Monkeytype accuracy logic
+        const acc = totalKeystrokes > 0 ? Math.round((correctChars / totalKeystrokes) * 100) : 100;
+        document.getElementById("acc-display").querySelector("span").textContent = `${Math.max(0, acc)}%`;
+
+        // BHC Net WPM Calculation rule: ((Gross Characters / 5) - Uncorrected Errors) / Minutes
+        const grossWpm = (currentIdx / 5) / minutesElapsed;
+        const penaltyValue = totalErrors / minutesElapsed;
+        const netWpm = Math.round(grossWpm - penaltyValue);
+
+        document.getElementById("wpm-display").querySelector("span").textContent = Math.max(0, netWpm);
+    }
+
+    function endTest(completedAllText) {
+        clearInterval(timerInterval);
+        testActive = false;
+        masterInput.blur();
+        
+        let finalErrors = 0;
+        for (let i = 0; i < currentIdx; i++) {
+            if (lettersArray[i].classList.contains("incorrect")) finalErrors++;
+        }
+        
+        const elapsedMinutes = timerStart ? (new Date() - timerStart) / 60000 : 1;
+        const netWpm = Math.max(0, Math.round(((currentIdx / 5) - finalErrors) / elapsedMinutes));
+        
+        setTimeout(() => {
+            alert(`Test Ended!\nFinal Net Speed: ${netWpm} WPM\nRemaining Unfixed Typos: ${finalErrors}`);
+            initTest();
+        }, 250);
+    }
+
+    // Capture Tab + Enter reset sequence shortcut
+    window.addEventListener("keydown", (e) => {
+        if (e.key === "Tab") {
+            e.preventDefault();
+        }
+    });
+
+    window.addEventListener("keyup", (e) => {
+        if (e.key === "Enter" && masterInput.blur) {
+            initTest();
+        }
+    });
+
+    // Initialize layout defaults
+    os_target_dir = "generated"
+    if (!document.getElementById("text-display-box").innerHTML) {
+        initTest();
+    }
+</script>
+
+</body>
+</html>
